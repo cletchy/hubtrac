@@ -40,6 +40,25 @@ const html = htm.bind(createElement)
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
+function downloadCSV(habits) {
+  const headers = ['Name','Color','Start Time','End Time','Duration (min)','Total Completions','Current Streak','Completion Dates']
+  const rows = habits.map(h => [
+    `"${h.name.replace(/"/g, '""')}"`,
+    h.color,
+    h.startTime || '',
+    h.endTime || '',
+    getDurationMinutes(h),
+    h.completions.length,
+    getStreak(h),
+    `"${[...h.completions].sort().join(', ')}"`
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  const a = Object.assign(document.createElement('a'), { href: url, download: `habits-${todayStr()}.csv` })
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ── color config ──────────────────────────────────────────────────────────────
 const COLOR_OPTIONS = [
   { key: 'blue',   bg: 'bg-blue-500',   accent: 'bg-blue-100',   ring: 'ring-blue-400' },
@@ -405,6 +424,13 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             ${habits.length > 0 && html`
+              <button onClick=${() => downloadCSV(habits)}
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-xl transition-colors">
+                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                CSV
+              </button>
               <button onClick=${handleClearAll}
                 className="text-sm font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors">
                 Clear All
