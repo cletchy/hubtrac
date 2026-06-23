@@ -5,16 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Habit Tracker</title>
 
-  <!-- Tailwind safelist must appear BEFORE the CDN script -->
-  <script>
-    tailwind.config = {
-      safelist: [
-        'bg-blue-500','bg-green-500','bg-purple-500','bg-red-500','bg-orange-500','bg-pink-500',
-        'bg-blue-100','bg-green-100','bg-purple-100','bg-red-100','bg-orange-100','bg-pink-100',
-        'ring-blue-400','ring-green-400','ring-purple-400','ring-red-400','ring-orange-400','ring-pink-400',
-      ]
-    }
-  </script>
+  <script>tailwind.config = {}</script>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Import map: resolves bare specifiers for the module script below -->
@@ -41,9 +32,10 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
 function downloadCSV(habits) {
-  const headers = ['Name','Color','Start Time','End Time','Duration (min)','Total Completions','Current Streak','Completion Dates']
+  const headers = ['Name','Date Added','Color','Start Time','End Time','Duration (min)','Total Completions','Current Streak','Completion Dates']
   const rows = habits.map(h => [
     `"${h.name.replace(/"/g, '""')}"`,
+    h.createdAt ? h.createdAt.slice(0, 10) : '',
     h.color,
     h.startTime || '',
     h.endTime || '',
@@ -60,21 +52,23 @@ function downloadCSV(habits) {
 }
 
 // ── color config ──────────────────────────────────────────────────────────────
+// Palette from Adobe Color theme + complementary additions
 const COLOR_OPTIONS = [
-  { key: 'blue',   bg: 'bg-blue-500',   accent: 'bg-blue-100',   ring: 'ring-blue-400' },
-  { key: 'green',  bg: 'bg-green-500',  accent: 'bg-green-100',  ring: 'ring-green-400' },
-  { key: 'purple', bg: 'bg-purple-500', accent: 'bg-purple-100', ring: 'ring-purple-400' },
-  { key: 'red',    bg: 'bg-red-500',    accent: 'bg-red-100',    ring: 'ring-red-400' },
-  { key: 'orange', bg: 'bg-orange-500', accent: 'bg-orange-100', ring: 'ring-orange-400' },
-  { key: 'pink',   bg: 'bg-pink-500',   accent: 'bg-pink-100',   ring: 'ring-pink-400' },
+  { key: 'olive',  hex: '#95C92C' }, // palette
+  { key: 'lime',   hex: '#B5E655' }, // palette
+  { key: 'teal',   hex: '#4CB6C2' }, // palette
+  { key: 'sage',   hex: '#7FC7BD' }, // palette
+  { key: 'amber',  hex: '#D4A017' }, // complementary warm
+  { key: 'coral',  hex: '#E07B54' }, // complementary warm
+  { key: 'forest', hex: '#3A7D44' }, // complementary deep green
 ]
 
-const COLOR_HEX = {
-  blue: '#3b82f6', green: '#22c55e', purple: '#a855f7',
-  red: '#ef4444',  orange: '#f97316', pink: '#ec4899',
-}
+const getHex = (key) => (COLOR_OPTIONS.find(c => c.key === key) ?? COLOR_OPTIONS[0]).hex
 
-const getColorMeta = (color) => COLOR_OPTIONS.find(c => c.key === color) ?? COLOR_OPTIONS[0]
+const hexToRgba = (hex, alpha) => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return `rgba(${r},${g},${b},${alpha})`
+}
 
 // ── duration helpers ──────────────────────────────────────────────────────────
 function getDurationMinutes(habit) {
@@ -181,17 +175,18 @@ function Dashboard({ habits }) {
 
 // ── HabitCard ─────────────────────────────────────────────────────────────────
 function HabitCard({ habit, onToggle, onDelete }) {
-  const { bg, accent } = getColorMeta(habit.color)
+  const hex = getHex(habit.color)
   const streak = getStreak(habit)
   const done = isCompletedToday(habit)
   const dur = getDurationMinutes(habit)
   const durLabel = formatDuration(dur)
   return html`
     <div className=${`relative flex items-center gap-4 rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white p-4 transition-all ${done ? 'opacity-90' : ''}`}>
-      <div className=${`absolute left-0 top-0 bottom-0 w-1.5 ${bg}`} />
+      <div className="absolute left-0 top-0 bottom-0 w-1.5" style=${{ backgroundColor: hex }} />
       <button
         onClick=${() => onToggle(habit.id)}
-        className=${`ml-2 flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${done ? `${bg} border-transparent text-white` : 'border-gray-300 hover:border-gray-400 bg-white text-transparent'}`}
+        className=${`ml-2 flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${done ? 'border-transparent text-white' : 'border-gray-300 hover:border-gray-400 bg-white text-transparent'}`}
+        style=${done ? { backgroundColor: hex } : {}}
       >
         <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -209,7 +204,8 @@ function HabitCard({ habit, onToggle, onDelete }) {
             </span>
           `}
           ${streak > 0 && html`
-            <span className=${`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${accent} text-gray-700`}>
+            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full text-gray-700"
+              style=${{ backgroundColor: hexToRgba(hex, 0.18) }}>
               🔥 ${streak} day${streak !== 1 ? 's' : ''}
             </span>
           `}
@@ -234,7 +230,7 @@ function HabitCard({ habit, onToggle, onDelete }) {
 // ── AddHabitModal ─────────────────────────────────────────────────────────────
 function AddHabitModal({ habits, onAdd, onClose }) {
   const [name, setName] = useState('')
-  const [color, setColor] = useState('blue')
+  const [color, setColor] = useState('teal')
   const [startTime, setStartTime] = useState(() => {
     const n = new Date()
     return `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`
@@ -295,10 +291,11 @@ function AddHabitModal({ habits, onAdd, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">Color</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               ${COLOR_OPTIONS.map(opt => html`
                 <button key=${opt.key} type="button" onClick=${() => setColor(opt.key)}
-                  className=${`w-8 h-8 rounded-full ${opt.bg} transition-all ${color === opt.key ? `ring-2 ring-offset-2 ${opt.ring} scale-110` : 'hover:scale-105'}`}
+                  className=${`w-8 h-8 rounded-full transition-all ${color === opt.key ? 'scale-110' : 'hover:scale-105'}`}
+                  style=${{ backgroundColor: opt.hex, boxShadow: color === opt.key ? `0 0 0 2px #fff, 0 0 0 4px ${opt.hex}` : 'none' }}
                 />
               `)}
             </div>
@@ -368,7 +365,7 @@ function DonutChart({ habits }) {
                 strokeDasharray=${`${dash} ${CIRC - dash}`}
                 strokeDashoffset=${0}
                 transform=${`rotate(${startAngle} ${CENTER} ${CENTER})`}
-                style=${{ stroke: COLOR_HEX[color] ?? '#6b7280' }}
+                style=${{ stroke: getHex(color) }}
               />
             `)}
           </svg>
@@ -381,7 +378,7 @@ function DonutChart({ habits }) {
           ${segs.map(({ name, color, totalMins }) => html`
             <div key=${name} className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style=${{ backgroundColor: COLOR_HEX[color] ?? '#6b7280' }} />
+                style=${{ backgroundColor: getHex(color) }} />
               <span className="text-sm truncate flex-1 text-gray-700 font-medium">${name}</span>
               ${totalMins > 0 && html`<span className="text-xs text-gray-400 flex-shrink-0">${formatDuration(totalMins)}</span>`}
             </div>
