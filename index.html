@@ -424,13 +424,6 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             ${habits.length > 0 && html`
-              <button onClick=${() => downloadCSV(habits)}
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-xl transition-colors">
-                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-                CSV
-              </button>
               <button onClick=${handleClearAll}
                 className="text-sm font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors">
                 Clear All
@@ -473,6 +466,18 @@ function App() {
           `
         }
       </div>
+
+      ${habits.length > 0 && html`
+        <div className="mt-8 flex justify-center pb-6">
+          <button onClick=${() => downloadCSV(habits)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 bg-white border border-gray-200 hover:border-gray-400 px-6 py-3 rounded-2xl shadow-sm transition-colors">
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Download Data as CSV
+          </button>
+        </div>
+      `}
 
       ${showModal && html`<${AddHabitModal} habits=${habits} onAdd=${handleAdd} onClose=${() => setShowModal(false)} />`}
     </div>
