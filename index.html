@@ -302,7 +302,7 @@ function AddHabitModal({ habits, onAdd, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick=${(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-gray-800 mb-5">New Habit</h2>
         <form onSubmit=${handleSubmit} className="space-y-4">
           <div>
@@ -402,10 +402,10 @@ function EditHabitModal({ habit, onSave, onClose }) {
 
   return html`
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick=${(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-gray-800 mb-1">Edit Habit</h2>
         <p className="text-sm text-gray-400 mb-5 truncate">${habit.name}</p>
         <form onSubmit=${handleSubmit} className="space-y-4">
