@@ -32,13 +32,11 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2)
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
 function downloadCSV(habits) {
-  const headers = ['Name','Date Added','Color','Start Time','End Time','Duration (min)','Total Completions','Current Streak','Completion Dates']
+  const headers = ['Name','Date Added','Color','Duration (min)','Total Completions','Current Streak','Completion Dates']
   const rows = habits.map(h => [
     `"${h.name.replace(/"/g, '""')}"`,
     h.createdAt ? h.createdAt.slice(0, 10) : '',
     h.color,
-    h.startTime || '',
-    h.endTime || '',
     getDurationMinutes(h),
     h.completions.length,
     getStreak(h),
@@ -71,7 +69,12 @@ const hexToRgba = (hex, alpha) => {
 }
 
 // ── duration helpers ──────────────────────────────────────────────────────────
+// Common quick-pick durations (minutes)
+const DURATION_PRESETS = [5, 10, 15, 30, 45, 60, 90, 120]
+
 function getDurationMinutes(habit) {
+  // New habits store duration directly; fall back to legacy start/end times
+  if (typeof habit.duration === 'number') return habit.duration > 0 ? habit.duration : 0
   if (!habit.startTime || !habit.endTime) return 0
   const [sh, sm] = habit.startTime.split(':').map(Number)
   const [eh, em] = habit.endTime.split(':').map(Number)
@@ -115,8 +118,8 @@ function useHabits() {
 
   const update = useCallback((next) => { setHabits(next); saveHabits(next) }, [])
 
-  const addHabit = useCallback((name, color, startTime, endTime) => {
-    update([...habits, { id: uid(), name: name.trim(), color, startTime, endTime, createdAt: new Date().toISOString(), completions: [] }])
+  const addHabit = useCallback((name, color, duration) => {
+    update([...habits, { id: uid(), name: name.trim(), color, duration, createdAt: new Date().toISOString(), completions: [] }])
   }, [habits, update])
 
   const deleteHabit = useCallback((id) => update(habits.filter(h => h.id !== id)), [habits, update])
@@ -197,10 +200,12 @@ function HabitCard({ habit, onToggle, onDelete }) {
           ${habit.name}
         </p>
         <div className="flex items-center gap-2 flex-wrap mt-1">
-          ${habit.startTime && habit.endTime && html`
-            <span className="text-xs text-gray-400">
-              ${habit.startTime} – ${habit.endTime}
-              ${durLabel && html`<span className="mx-1 text-gray-300">·</span>${durLabel}`}
+          ${durLabel && html`
+            <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              ${durLabel}
             </span>
           `}
           ${streak > 0 && html`
@@ -209,7 +214,7 @@ function HabitCard({ habit, onToggle, onDelete }) {
               🔥 ${streak} day${streak !== 1 ? 's' : ''}
             </span>
           `}
-          ${streak === 0 && !habit.startTime && html`
+          ${streak === 0 && !durLabel && html`
             <span className="text-xs text-gray-400">Start your streak today</span>
           `}
         </div>
@@ -231,14 +236,7 @@ function HabitCard({ habit, onToggle, onDelete }) {
 function AddHabitModal({ habits, onAdd, onClose }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('teal')
-  const [startTime, setStartTime] = useState(() => {
-    const n = new Date()
-    return `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`
-  })
-  const [endTime, setEndTime] = useState(() => {
-    const n = new Date()
-    return `${((n.getHours()+1)%24).toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`
-  })
+  const [duration, setDuration] = useState(30)
   const inputRef = useRef(null)
   const colorInputRef = useRef(null)
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -249,13 +247,13 @@ function AddHabitModal({ habits, onAdd, onClose }) {
     const match = habits.find(h => h.name.toLowerCase() === name.trim().toLowerCase())
     if (match) setColor(match.color)
   }, [name, habits])
-  const timeValid = startTime < endTime
-  const canSubmit = name.trim() && timeValid
+  const durationValid = Number.isFinite(duration) && duration > 0
+  const canSubmit = name.trim() && durationValid
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onAdd(name.trim(), color, startTime, endTime)
+    onAdd(name.trim(), color, duration)
   }
 
   return html`
@@ -279,16 +277,24 @@ function AddHabitModal({ habits, onAdd, onClose }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Time window</label>
-            <div className="flex items-center gap-2">
-              <input type="time" value=${startTime} onChange=${(e) => setStartTime(e.target.value)}
-                className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              <span className="text-gray-400 text-sm">to</span>
-              <input type="time" value=${endTime} onChange=${(e) => setEndTime(e.target.value)}
-                className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            <label className="block text-sm font-medium text-gray-600 mb-2">Duration</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              ${DURATION_PRESETS.map(mins => html`
+                <button key=${mins} type="button" onClick=${() => setDuration(mins)}
+                  className=${`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${duration === mins ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                  ${formatDuration(mins)}
+                </button>
+              `)}
             </div>
-            ${!timeValid && startTime && endTime && html`
-              <p className="text-xs text-red-400 mt-1">End time must be after start time</p>
+            <div className="flex items-center gap-2">
+              <input type="number" min="1" max="1440" step="1"
+                value=${Number.isFinite(duration) ? duration : ''}
+                onChange=${(e) => setDuration(e.target.value === '' ? NaN : parseInt(e.target.value, 10))}
+                className="w-24 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              <span className="text-gray-400 text-sm">minutes</span>
+            </div>
+            ${!durationValid && html`
+              <p className="text-xs text-red-400 mt-1">Enter a duration of at least 1 minute</p>
             `}
           </div>
           <div>
@@ -417,8 +423,8 @@ function App() {
   const { habits, addHabit, deleteHabit, toggleCompletion, clearAll } = useHabits()
   const [showModal, setShowModal] = useState(false)
 
-  const handleAdd = (name, color, startTime, endTime) => {
-    addHabit(name, color, startTime, endTime)
+  const handleAdd = (name, color, duration) => {
+    addHabit(name, color, duration)
     setShowModal(false)
   }
 
