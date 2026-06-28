@@ -346,9 +346,9 @@ function AddHabitModal({ habits, onAdd, onClose }) {
                   style=${{ backgroundColor: opt.hex, boxShadow: color === opt.key ? `0 0 0 2px #fff, 0 0 0 4px ${opt.hex}` : 'none' }}
                 />
               `)}
-              <button type="button" onClick=${() => colorInputRef.current?.click()}
+              <label
                 title="Custom color"
-                className=${`w-8 h-8 rounded-full transition-all flex items-center justify-center ${isCustomColor ? 'scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400 hover:scale-105'}`}
+                className=${`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer ${isCustomColor ? 'scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400 hover:scale-105'}`}
                 style=${isCustomColor ? { backgroundColor: color, boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${color}` } : {}}
               >
                 ${!isCustomColor && html`
@@ -356,12 +356,12 @@ function AddHabitModal({ habits, onAdd, onClose }) {
                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                   </svg>
                 `}
-              </button>
-              <input ref=${colorInputRef} type="color"
-                className="sr-only"
-                value=${isCustomColor ? color : '#4CB6C2'}
-                onInput=${(e) => setColor(e.target.value)}
-              />
+                <input type="color"
+                  value=${isCustomColor ? color : '#4CB6C2'}
+                  onInput=${(e) => setColor(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full"
+                />
+              </label>
             </div>
           </div>
           <div className="flex gap-2 pt-2">
@@ -443,9 +443,9 @@ function EditHabitModal({ habit, onSave, onClose }) {
                   style=${{ backgroundColor: opt.hex, boxShadow: color === opt.key ? `0 0 0 2px #fff, 0 0 0 4px ${opt.hex}` : 'none' }}
                 />
               `)}
-              <button type="button" onClick=${() => colorInputRef.current?.click()}
+              <label
                 title="Custom colour"
-                className=${`w-8 h-8 rounded-full transition-all flex items-center justify-center ${isCustomColor ? 'scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400 hover:scale-105'}`}
+                className=${`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer ${isCustomColor ? 'scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400 hover:scale-105'}`}
                 style=${isCustomColor ? { backgroundColor: color, boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${color}` } : {}}
               >
                 ${!isCustomColor && html`
@@ -453,12 +453,12 @@ function EditHabitModal({ habit, onSave, onClose }) {
                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                   </svg>
                 `}
-              </button>
-              <input ref=${colorInputRef} type="color"
-                className="sr-only"
-                value=${isCustomColor ? color : '#4CB6C2'}
-                onInput=${(e) => setColor(e.target.value)}
-              />
+                <input type="color"
+                  value=${isCustomColor ? color : '#4CB6C2'}
+                  onInput=${(e) => setColor(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full"
+                />
+              </label>
             </div>
           </div>
           <div className="flex gap-2 pt-2">
@@ -650,7 +650,7 @@ function App() {
   `
 }
 
-// ── mount ─────────────────────────────────────────────────────────────────────
+// ── mount ───────────────
 createRoot(document.getElementById('root')).render(html`<${App}/>`)
 </script>
 </body>
