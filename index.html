@@ -143,9 +143,22 @@ function useHabits() {
     }))
   }, [habits, update])
 
+  const changeColor = useCallback((id, color) => {
+    update(habits.map(h => h.id !== id ? h : { ...h, color }))
+  }, [habits, update])
+
+  // Update colour and/or duration of an existing habit
+  const updateHabit = useCallback((id, { color, duration }) => {
+    update(habits.map(h => h.id !== id ? h : {
+      ...h,
+      ...(color !== undefined ? { color } : {}),
+      ...(Number.isFinite(duration) ? { duration } : {}),
+    }))
+  }, [habits, update])
+
   const clearAll = useCallback(() => update([]), [update])
 
-  return { habits, addHabit, deleteHabit, toggleCompletion, clearAll }
+  return { habits, addHabit, deleteHabit, toggleCompletion, changeColor, updateHabit, clearAll }
 }
 
 // ── StatCard ──────────────────────────────────────────────────────────────────
@@ -186,7 +199,7 @@ function Dashboard({ habits }) {
 }
 
 // ── HabitCard ─────────────────────────────────────────────────────────────────
-function HabitCard({ habit, onToggle, onDelete }) {
+function HabitCard({ habit, onToggle, onDelete, onEdit }) {
   const hex = getHex(habit.color)
   const streak = getStreak(habit)
   const done = isCompletedToday(habit)
@@ -229,13 +242,27 @@ function HabitCard({ habit, onToggle, onDelete }) {
         </div>
       </div>
       <button
+        onClick=${() => onEdit(habit)}
+        title="Edit habit"
+        aria-label="Edit habit"
+        className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+          <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+        </svg>
+        <span className="hidden sm:inline">Edit</span>
+      </button>
+      <button
         onClick=${() => onDelete(habit.id)}
+        title="Remove habit"
+        aria-label="Remove habit"
         className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
-        Remove
+        <span className="hidden sm:inline">Remove</span>
       </button>
     </div>
   `
@@ -353,6 +380,98 @@ function AddHabitModal({ habits, onAdd, onClose }) {
   `
 }
 
+// ── EditHabitModal ────────────────────────────────────────────────────────────
+function EditHabitModal({ habit, onSave, onClose }) {
+  const [color, setColor] = useState(habit.color)
+  const [duration, setDuration] = useState(getDurationMinutes(habit) || 30)
+  const colorInputRef = useRef(null)
+  const isCustomColor = color?.startsWith('#')
+
+  const durationValid = Number.isFinite(duration) && duration > 0
+  const totalMins = Number.isFinite(duration) ? duration : 0
+  const selHours = Math.floor(totalMins / 60)
+  const selMins = totalMins % 60
+  const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i)
+  const MIN_OPTIONS = Array.from({ length: 12 }, (_, i) => i * 5)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!durationValid) return
+    onSave(habit.id, { color, duration })
+  }
+
+  return html`
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick=${(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">Edit Habit</h2>
+        <p className="text-sm text-gray-400 mb-5 truncate">${habit.name}</p>
+        <form onSubmit=${handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">Duration</label>
+            <div className="flex items-center gap-2">
+              <select
+                value=${selHours}
+                onChange=${(e) => setDuration(parseInt(e.target.value, 10) * 60 + selMins)}
+                className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                ${HOUR_OPTIONS.map(h => html`<option key=${h} value=${h}>${h} hr</option>`)}
+              </select>
+              <select
+                value=${selMins}
+                onChange=${(e) => setDuration(selHours * 60 + parseInt(e.target.value, 10))}
+                className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                ${MIN_OPTIONS.map(m => html`<option key=${m} value=${m}>${m} min</option>`)}
+              </select>
+            </div>
+            ${!durationValid && html`
+              <p className="text-xs text-red-400 mt-1">Enter a duration of at least 1 minute</p>
+            `}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">Colour</label>
+            <div className="flex flex-wrap gap-2 items-center">
+              ${COLOR_OPTIONS.map(opt => html`
+                <button key=${opt.key} type="button" onClick=${() => setColor(opt.key)}
+                  className=${`w-8 h-8 rounded-full transition-all ${color === opt.key ? 'scale-110' : 'hover:scale-105'}`}
+                  style=${{ backgroundColor: opt.hex, boxShadow: color === opt.key ? `0 0 0 2px #fff, 0 0 0 4px ${opt.hex}` : 'none' }}
+                />
+              `)}
+              <button type="button" onClick=${() => colorInputRef.current?.click()}
+                title="Custom colour"
+                className=${`w-8 h-8 rounded-full transition-all flex items-center justify-center ${isCustomColor ? 'scale-110' : 'border-2 border-dashed border-gray-300 hover:border-gray-400 hover:scale-105'}`}
+                style=${isCustomColor ? { backgroundColor: color, boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${color}` } : {}}
+              >
+                ${!isCustomColor && html`
+                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                `}
+              </button>
+              <input ref=${colorInputRef} type="color"
+                className="sr-only"
+                value=${isCustomColor ? color : '#4CB6C2'}
+                onInput=${(e) => setColor(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick=${onClose}
+              className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled=${!durationValid}
+              className="flex-1 rounded-xl bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
+}
+
 // ── DonutChart ────────────────────────────────────────────────────────────────
 const SIZE = 160, STROKE = 24, R = (SIZE - STROKE) / 2
 const CIRC = 2 * Math.PI * R, CENTER = SIZE / 2, GAP = 5
@@ -433,12 +552,19 @@ function DonutChart({ habits }) {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
-  const { habits, addHabit, deleteHabit, toggleCompletion, clearAll } = useHabits()
+  const { habits, addHabit, deleteHabit, toggleCompletion, updateHabit, clearAll } = useHabits()
   const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const editingHabit = habits.find(h => h.id === editingId) || null
 
   const handleAdd = (name, color, duration) => {
     addHabit(name, color, duration)
     setShowModal(false)
+  }
+
+  const handleSaveEdit = (id, changes) => {
+    updateHabit(id, changes)
+    setEditingId(null)
   }
 
   const handleClearAll = () => {
@@ -494,7 +620,7 @@ function App() {
           : html`
             <div className="space-y-3 mt-6">
               ${habits.map(habit => html`
-                <${HabitCard} key=${habit.id} habit=${habit} onToggle=${toggleCompletion} onDelete=${deleteHabit} />
+                <${HabitCard} key=${habit.id} habit=${habit} onToggle=${toggleCompletion} onDelete=${deleteHabit} onEdit=${(h) => setEditingId(h.id)} />
               `)}
             </div>
           `
@@ -514,6 +640,7 @@ function App() {
       `}
 
       ${showModal && html`<${AddHabitModal} habits=${habits} onAdd=${handleAdd} onClose=${() => setShowModal(false)} />`}
+      ${editingHabit && html`<${EditHabitModal} habit=${editingHabit} onSave=${handleSaveEdit} onClose=${() => setEditingId(null)} />`}
     </div>
   `
 }
