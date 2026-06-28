@@ -383,21 +383,21 @@ function AddHabitModal({ habits, onAdd, onClose }) {
 // ── EditHabitModal ────────────────────────────────────────────────────────────
 function EditHabitModal({ habit, onSave, onClose }) {
   const [color, setColor] = useState(habit.color)
-  const [duration, setDuration] = useState(getDurationMinutes(habit) || 30)
+  const [add, setAdd] = useState(0) // minutes to add to the existing duration
   const colorInputRef = useRef(null)
   const isCustomColor = color?.startsWith('#')
 
-  const durationValid = Number.isFinite(duration) && duration > 0
-  const totalMins = Number.isFinite(duration) ? duration : 0
-  const selHours = Math.floor(totalMins / 60)
-  const selMins = totalMins % 60
+  const current = getDurationMinutes(habit)
+  const addMins = Number.isFinite(add) ? add : 0
+  const newTotal = current + addMins
+  const addHours = Math.floor(addMins / 60)
+  const addRemMins = addMins % 60
   const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i)
   const MIN_OPTIONS = Array.from({ length: 12 }, (_, i) => i * 5)
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!durationValid) return
-    onSave(habit.id, { color, duration })
+    onSave(habit.id, { color, duration: newTotal })
   }
 
   return html`
@@ -410,24 +410,29 @@ function EditHabitModal({ habit, onSave, onClose }) {
         <p className="text-sm text-gray-400 mb-5 truncate">${habit.name}</p>
         <form onSubmit=${handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">Duration</label>
+            <div className="flex items-baseline justify-between mb-2">
+              <label className="text-sm font-medium text-gray-600">Add time</label>
+              <span className="text-xs text-gray-400">Current: ${formatDuration(current) || '0m'}</span>
+            </div>
             <div className="flex items-center gap-2">
               <select
-                value=${selHours}
-                onChange=${(e) => setDuration(parseInt(e.target.value, 10) * 60 + selMins)}
+                value=${addHours}
+                onChange=${(e) => setAdd(parseInt(e.target.value, 10) * 60 + addRemMins)}
                 className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
                 ${HOUR_OPTIONS.map(h => html`<option key=${h} value=${h}>${h} hr</option>`)}
               </select>
               <select
-                value=${selMins}
-                onChange=${(e) => setDuration(selHours * 60 + parseInt(e.target.value, 10))}
+                value=${addRemMins}
+                onChange=${(e) => setAdd(addHours * 60 + parseInt(e.target.value, 10))}
                 className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
                 ${MIN_OPTIONS.map(m => html`<option key=${m} value=${m}>${m} min</option>`)}
               </select>
             </div>
-            ${!durationValid && html`
-              <p className="text-xs text-red-400 mt-1">Enter a duration of at least 1 minute</p>
-            `}
+            <p className="text-xs text-gray-500 mt-2">
+              ${addMins > 0
+                ? html`New total: <span className="font-semibold text-gray-700">${formatDuration(newTotal)}</span>`
+                : html`<span className="text-gray-400">Pick an amount to add to the current duration</span>`}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">Colour</label>
@@ -461,8 +466,8 @@ function EditHabitModal({ habit, onSave, onClose }) {
               className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled=${!durationValid}
-              className="flex-1 rounded-xl bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            <button type="submit"
+              className="flex-1 rounded-xl bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700 transition-colors">
               Save
             </button>
           </div>
